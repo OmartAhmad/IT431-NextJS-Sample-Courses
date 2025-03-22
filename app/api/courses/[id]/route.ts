@@ -1,54 +1,34 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import { Course } from "@/types/course";
+import clientPromise from "@/lib/mongodb";
+// Removed ObjectId import since we will use numeric IDs
 
-// Define the path to the JSON file
-const dataFilePath = path.join(process.cwd(), "data", "courses.json");
-
-// Helper function to read courses
-const readCourses = (): Course[] => {
-  try {
-    const jsonData = fs.readFileSync(dataFilePath, "utf-8");
-    return JSON.parse(jsonData) as Course[];
-  } catch (error) {
-    console.error("Error reading courses file:", error);
-    return [];
-  }
-};
-
-// Helper function to write courses
-const writeCourses = (courses: Course[]) => {
-  try {
-    fs.writeFileSync(dataFilePath, JSON.stringify(courses, null, 2), "utf-8");
-  } catch (error) {
-    console.error("Error writing to courses file:", error);
-  }
-};
-
-// GET: Retrieve a course by ID
+// GET: Retrieve a single course by numeric ID
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> } // Await params
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params; // Await params before accessing
-    const courseId = parseInt(id, 10);
-
-    if (isNaN(courseId)) {
+    if (!params?.id) {
       return NextResponse.json(
-        { error: "Invalid course ID." },
+        { error: "Missing course ID." },
+        { status: 400 }
+      );
+    }
+    const courseId = Number(params.id); // Convert the id param to a number
+    if (Number.isNaN(courseId)) {
+      return NextResponse.json(
+        { error: "Invalid course ID format." },
         { status: 400 }
       );
     }
 
-    const courses = readCourses();
-    const course = courses.find((c) => c.id === courseId);
+    const client = await clientPromise;
+    const db = client.db("coursesDb");
+    const course = await db.collection("courses").findOne({ id: courseId }); // lookup by numeric id
 
     if (!course) {
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
-
     return NextResponse.json(course, { status: 200 });
   } catch (error) {
     console.error("Error retrieving course:", error);
@@ -59,34 +39,40 @@ export async function GET(
   }
 }
 
-// PUT: Update a course by ID
+// PUT: Update a course by numeric ID
 export async function PUT(
   request: Request,
-  context: { params: Promise<{ id: string }> } // Await params
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params; // Await params before accessing
-    const courseId = parseInt(id, 10);
-    if (isNaN(courseId)) {
+    if (!params?.id) {
       return NextResponse.json(
-        { error: "Invalid course ID." },
+        { error: "Missing course ID." },
+        { status: 400 }
+      );
+    }
+    const courseId = Number(params.id);
+    if (Number.isNaN(courseId)) {
+      return NextResponse.json(
+        { error: "Invalid course ID format." },
         { status: 400 }
       );
     }
 
-    const updatedCourse: Partial<Course> = await request.json();
-    const courses = readCourses();
-    const index = courses.findIndex((c) => c.id === courseId);
+    const updatedCourse = await request.json();
+    const client = await clientPromise;
+    const db = client.db("coursesDb");
+    const result = await db
+      .collection("courses")
+      .updateOne({ id: courseId }, { $set: updatedCourse });
 
-    if (index === -1) {
+    if (result.matchedCount === 0) {
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
-
-    courses[index] = { ...courses[index], ...updatedCourse, id: courseId };
-
-    writeCourses(courses);
-
-    return NextResponse.json(courses[index], { status: 200 });
+    return NextResponse.json(
+      { message: "Course updated successfully." },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error updating course:", error);
     return NextResponse.json(
@@ -96,31 +82,33 @@ export async function PUT(
   }
 }
 
-// DELETE: Remove a course by ID
+// DELETE: Remove a course by numeric ID
 export async function DELETE(
   request: Request,
-  context: { params: Promise<{ id: string }> } // Await params
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await context.params; // Await params before accessing
-    const courseId = parseInt(id, 10);
-    if (isNaN(courseId)) {
+    if (!params?.id) {
       return NextResponse.json(
-        { error: "Invalid course ID." },
+        { error: "Missing course ID." },
+        { status: 400 }
+      );
+    }
+    const courseId = Number(params.id);
+    if (Number.isNaN(courseId)) {
+      return NextResponse.json(
+        { error: "Invalid course ID format." },
         { status: 400 }
       );
     }
 
-    let courses = readCourses();
-    const initialLength = courses.length;
-    courses = courses.filter((c) => c.id !== courseId);
+    const client = await clientPromise;
+    const db = client.db("coursesDb");
+    const result = await db.collection("courses").deleteOne({ id: courseId });
 
-    if (courses.length === initialLength) {
+    if (result.deletedCount === 0) {
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
     }
-
-    writeCourses(courses);
-
     return NextResponse.json(
       { message: `Course with ID ${courseId} deleted.` },
       { status: 200 }

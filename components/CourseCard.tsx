@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Course } from "@/models/courseModel";
 
 interface CourseCardProps {
@@ -19,11 +25,11 @@ export default function CourseCard({ course }: CourseCardProps) {
       </CardContent>
       <CardFooter>
         <Link href={`/courses/${course.id}`} className="w-full">
-          <Button className="bg-gradient-to-r from-blue-300 to-blue-700 hover:from-blue-600 hover:to-blue-800 w-full" >
+          <Button className="bg-gradient-to-r from-blue-300 to-blue-700 hover:from-blue-600 hover:to-blue-800 w-full">
             View Course
           </Button>
         </Link>
       </CardFooter>
     </Card>
   );
-} 
+}
