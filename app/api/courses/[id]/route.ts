@@ -14,7 +14,7 @@ export async function GET(
         { status: 400 }
       );
     }
-    const courseId = Number(params.id); // Convert the id param to a number
+    const courseId = Number(params.id); 
     if (Number.isNaN(courseId)) {
       return NextResponse.json(
         { error: "Invalid course ID format." },
@@ -24,7 +24,7 @@ export async function GET(
 
     const client = await clientPromise;
     const db = client.db("coursesDb");
-    const course = await db.collection("courses").findOne({ id: courseId }); // lookup by numeric id
+    const course = await db.collection("courses").findOne({ id: courseId }); 
 
     if (!course) {
       return NextResponse.json({ error: "Course not found." }, { status: 404 });
